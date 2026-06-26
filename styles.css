@@ -1,0 +1,375 @@
+/* Better Daily Notes — infinite scroll view */
+
+/* No icon in the tab header for this view. */
+.workspace-tab-header[data-type='better-daily-notes-infinite'] .workspace-tab-header-inner-icon {
+	display: none;
+}
+
+/* Drop Obsidian's default .view-content padding; we pad the scroller instead
+   (more specific than .bdn-view so it actually wins). */
+.workspace-leaf-content[data-type='better-daily-notes-infinite'] .view-content {
+	padding: 0;
+}
+
+.bdn-view {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	padding: 0;
+}
+
+.bdn-scroll {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	overflow-x: hidden;
+	/* Let the browser help keep position stable across DOM mutations. */
+	overflow-anchor: auto;
+	/* Match a normal note's .cm-scroller padding (16px); scrollbar stays at the
+	   edge since the padding is inside the scroll container. */
+	padding: var(--size-4-4);
+}
+
+/* Match the active theme's readable line width. Minimal-based themes (like the
+   user's) drive this with --line-width / --max-width; fall back to Obsidian's
+   --file-line-width otherwise. */
+.bdn-page-header,
+.bdn-stack {
+	width: var(--line-width, var(--file-line-width, 700px));
+	max-width: var(--max-width, var(--file-line-width, 700px));
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.bdn-page-header {
+	padding: 0;
+}
+
+.bdn-inline-title {
+	/* Match a normal note: 16px below the title, nothing above the body. */
+	margin: 0 0 var(--size-4-4);
+	cursor: text;
+	outline: none;
+}
+
+.bdn-inline-title:empty::before {
+	content: attr(data-placeholder);
+	color: var(--text-faint);
+}
+
+.bdn-stack {
+	display: flex;
+	flex-direction: column;
+	/* Width/max-width set above alongside .bdn-page-header so they stay aligned.
+	   Horizontal padding comes from .bdn-scroll; the gap to the title is the
+	   title's own margin-bottom (like a normal note), so no padding here. */
+	padding: 0;
+	/* Fade back in after a jump (see .bdn-revealing); instant out, smooth in. */
+	transition: opacity 120ms ease-out;
+}
+
+/* While a calendar jump is pinning the scroll, hide the stack so the height
+   churn (placeholders swapping to live editors above the target) isn't visible.
+   The class is removed once the position settles, fading the stack back in. */
+.bdn-scroll.bdn-revealing .bdn-stack {
+	opacity: 0;
+	transition: none;
+}
+
+/* One day. The divider is a real <hr> (.bdn-day-divider, the last child). */
+.bdn-day {
+	display: flex;
+	flex-direction: column;
+}
+
+/* Match how Obsidian draws "---" in Live Preview, NOT reading view: the rule is
+   centered inside a single text line with no block margin
+   (.markdown-source-view.mod-cm6 .hr { display:flex; align-items:center } +
+   hr { margin:0; flex:1 0 0 }), rather than the reading-view hr's 2rem margin. */
+.bdn-day-divider {
+	display: flex;
+	align-items: center;
+	height: calc(var(--font-text-size) * var(--line-height-normal));
+	margin: 0;
+	border: none;
+}
+
+.bdn-day-divider::before {
+	content: '';
+	flex: 1 0 0;
+	border-top: var(--hr-thickness) solid var(--hr-color);
+}
+
+/* No divider under the last (oldest, bottom-most) entry. */
+.bdn-day:last-child .bdn-day-divider {
+	display: none;
+}
+
+.bdn-day-header {
+	/* 4px above, 16px below — matches a normal note's inline-title bottom gap. */
+	padding: var(--size-4-1) 0 var(--size-4-4);
+}
+
+/* Style the date like a top-level "# heading". */
+.bdn-day-title {
+	display: block;
+	font-family: var(--h1-font, inherit);
+	font-size: var(--h1-size);
+	line-height: var(--h1-line-height);
+	font-weight: var(--h1-weight);
+	font-style: var(--h1-style);
+	font-variant: var(--h1-variant);
+	letter-spacing: var(--h1-letter-spacing, normal);
+	color: var(--h1-color, var(--text-normal));
+	cursor: pointer;
+	text-decoration: none;
+}
+
+.bdn-day-title:hover {
+	color: var(--h1-color, var(--text-normal));
+	text-decoration: none;
+}
+
+.bdn-day-body {
+	/* Estimated height for not-yet-rendered / collapsed days, so the scrollbar
+	   geometry stays stable while windowing swaps content in and out. */
+	min-height: 4em;
+}
+
+/* Make the embedded editor feel like a normal note body. */
+.bdn-day-body .cm-editor {
+	background: transparent;
+}
+
+.bdn-day-body .cm-scroller {
+	padding: 0;
+}
+
+.bdn-sentinel {
+	height: 1px;
+}
+
+.bdn-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-4);
+	padding: var(--size-4-8) 0;
+	color: var(--text-muted);
+}
+
+/* Accent-colored live sample of the custom date format in settings. */
+.bdn-format-sample {
+	color: var(--text-accent);
+}
+
+/* ---- Calendar sidebar view ---- */
+
+.bdn-calendar {
+	/* Max size of a day cell; columns never grow past this — extra width becomes gap. */
+	--bdn-cal-cell: 36px;
+	padding: var(--size-4-2) var(--size-4-3);
+	user-select: none;
+}
+
+/* The month/year panes carry `.workspace-leaf` purely so themes that animate
+   sidebar leaves on show animate our view switch too (no animation is defined
+   here). Re-assert a plain block box so the inherited `.workspace-leaf` layout
+   (flex column, flex-grow, overflow) doesn't alter the panes; the theme's
+   `animation` property is unaffected by this. */
+.bdn-cal-pane {
+	display: block;
+	flex: none;
+	overflow: visible;
+}
+
+.bdn-cal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-4-3);
+}
+
+.bdn-cal-title {
+	/* Styled like the backlinks pane section headers ("LINKS", "LINKED MENTIONS"). */
+	padding-left: var(--size-4-2);
+	/* Nudge down slightly: uppercase caps sit optically high next to the buttons. */
+	padding-top: 2px;
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--text-muted);
+}
+
+/* The title is a button (opens the month picker); hint that on hover. */
+.bdn-cal-title.is-clickable {
+	cursor: pointer;
+}
+
+.bdn-cal-title.is-clickable:hover {
+	color: var(--text-normal);
+}
+
+.bdn-cal-controls {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
+/* Pin the icon size so all three buttons are equal squares, matching the
+   18px icons used by action buttons in other sidebar panel headers. */
+.bdn-cal-controls .clickable-icon {
+	--icon-size: var(--icon-l);
+}
+
+.bdn-cal-weekdays {
+	display: grid;
+	/* Columns cap at a fixed size; extra panel width spreads into the gaps so the
+	   day cells stay a constant size (see .bdn-cal-grid). */
+	grid-template-columns: repeat(7, minmax(0, var(--bdn-cal-cell)));
+	justify-content: space-between;
+	margin-bottom: var(--size-2-2);
+}
+
+.bdn-cal-weekday {
+	text-align: center;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.bdn-cal-grid {
+	display: grid;
+	/* Fixed-size day cells; leftover width is distributed between columns as
+	   whitespace rather than enlarging the cells. */
+	grid-template-columns: repeat(7, minmax(0, var(--bdn-cal-cell)));
+	justify-content: space-between;
+	row-gap: var(--size-2-1);
+}
+
+.bdn-cal-day {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	aspect-ratio: 1 / 1;
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-small);
+	/* In-month cells carry the `clickable-icon` class, so hover/press/shrink come
+	   from the theme. Funnel both our text color and clickable-icon's icon-color
+	   tokens through one value so the number keeps our color in every state. */
+	--bdn-day-color: var(--text-faint); /* faint by default (no note) */
+	--icon-color: var(--bdn-day-color);
+	--icon-color-hover: var(--bdn-day-color);
+	--icon-color-active: var(--bdn-day-color);
+	--icon-color-focused: var(--bdn-day-color);
+	--icon-opacity: 1;
+	--icon-opacity-hover: 1;
+	color: var(--bdn-day-color);
+}
+
+/* Days with a note read at full strength; other-month days are blank. */
+.bdn-cal-day.has-note {
+	--bdn-day-color: var(--text-normal);
+}
+
+/* Today: accent-colored number (no ring). */
+.bdn-cal-day.is-today {
+	--bdn-day-color: var(--interactive-accent);
+}
+
+/* Days outside the current month: keep the cell's space, hide the number. */
+.bdn-cal-day.is-adjacent {
+	color: transparent;
+	cursor: default;
+}
+
+/* The day currently in view in the infinite scroll: same fill as button hover. */
+.bdn-cal-day.is-active,
+.bdn-cal-day.is-active:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* ---- Month / year picker (opened from the title) ---- */
+
+/* The header's month buttons and year buttons occupy the same slot; only one
+   group is shown at a time, keeping the header height (and title) steady. */
+.bdn-cal-controls-group {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
+/* Disabled nav arrow (e.g. "next" while "Show future" is off): dimmed + inert. */
+.bdn-cal-controls .clickable-icon.is-disabled {
+	color: var(--text-faint);
+	--icon-color: var(--text-faint);
+	cursor: default;
+	pointer-events: none;
+}
+
+/* Clickable year between the ‹ › arrows; opens a year dropdown. */
+.bdn-cal-picker-year {
+	min-width: 3.5ch;
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-medium);
+	color: var(--text-normal);
+}
+
+.bdn-cal-picker-year.is-clickable {
+	/* Stretch to the row height so the hover box matches the arrow buttons. */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	align-self: stretch;
+	cursor: pointer;
+	border-radius: var(--radius-s);
+	padding: 0 var(--size-2-2);
+}
+
+.bdn-cal-picker-year.is-clickable:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.bdn-cal-picker-months {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: var(--size-2-2);
+}
+
+.bdn-cal-picker-month {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--size-2-3) 0;
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-small);
+	/* Faint when empty, matching a no-note day in the grid. */
+	color: var(--text-faint);
+}
+
+/* Only clickable months get the pointer + hover fill (see is-clickable gating). */
+.bdn-cal-picker-month.is-clickable {
+	cursor: pointer;
+}
+
+.bdn-cal-picker-month.is-clickable:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* Months that contain notes read at full strength (like a day with a note). */
+.bdn-cal-picker-month.has-note {
+	color: var(--text-normal);
+}
+
+/* This year's current month: accent-colored label (matches the day grid's today). */
+.bdn-cal-picker-month.is-today {
+	color: var(--interactive-accent);
+}
+
+/* The month the day grid is currently showing. */
+.bdn-cal-picker-month.is-active {
+	background-color: var(--background-modifier-hover);
+}
