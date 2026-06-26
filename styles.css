@@ -190,25 +190,29 @@
 	margin-bottom: var(--size-4-3);
 }
 
-.bdn-cal-title {
-	/* Styled like the backlinks pane section headers ("LINKS", "LINKED MENTIONS"). */
-	padding-left: var(--size-4-2);
-	/* Nudge down slightly: uppercase caps sit optically high next to the buttons. */
-	padding-top: 2px;
-	font-size: var(--font-ui-smaller);
-	font-weight: var(--font-medium);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	color: var(--text-muted);
+/* Header text labels (the "June 2026" title and the "Today" button) are styled
+   like a backlinks pane section header. The host generates no box
+   (display:contents); it exists only so the label is a direct child of
+   `.backlink-pane`, letting the theme's `.backlink-pane > .tree-item-self` rule
+   apply its section-header text styling (size, weight, casing, color,
+   letter-spacing) — under any theme, with nothing hardcoded. */
+.bdn-cal-header .bdn-cal-headtext-host {
+	display: contents;
 }
 
-/* The title is a button (opens the month picker); hint that on hover. */
-.bdn-cal-title.is-clickable {
+/* Each label is a real `.tree-item-self` + `.tree-item-inner`, so it keeps the
+   pane header's NATIVE vertical metrics (line-height, block padding, min-height)
+   and therefore matches "Links"/"Linked mentions" exactly — don't reset those.
+   Only override the horizontal inset for our header row, and add the pointer. */
+.bdn-cal-header .bdn-cal-headtext {
+	padding-inline: var(--size-4-2);
 	cursor: pointer;
 }
 
-.bdn-cal-title.is-clickable:hover {
-	color: var(--text-normal);
+/* Drop the native tree-item bottom margin so labels sit flush (keep padding). */
+.bdn-cal-header .bdn-cal-headtext,
+.bdn-cal-header .bdn-cal-headtext-inner {
+	margin-block-end: 0;
 }
 
 .bdn-cal-controls {
@@ -308,29 +312,6 @@
 	--icon-color: var(--text-faint);
 	cursor: default;
 	pointer-events: none;
-}
-
-/* Clickable year between the ‹ › arrows; opens a year dropdown. */
-.bdn-cal-picker-year {
-	min-width: 3.5ch;
-	font-size: var(--font-ui-small);
-	font-weight: var(--font-medium);
-	color: var(--text-normal);
-}
-
-.bdn-cal-picker-year.is-clickable {
-	/* Stretch to the row height so the hover box matches the arrow buttons. */
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	align-self: stretch;
-	cursor: pointer;
-	border-radius: var(--radius-s);
-	padding: 0 var(--size-2-2);
-}
-
-.bdn-cal-picker-year.is-clickable:hover {
-	background-color: var(--background-modifier-hover);
 }
 
 .bdn-cal-picker-months {

@@ -108,22 +108,22 @@ export class CalendarView extends ItemView {
 		root.addClass('bdn-calendar');
 
 		const header = root.createDiv({ cls: 'bdn-cal-header' });
-		// The title doubles as a button: click it to open the month/year picker.
-		this.titleEl = header.createDiv({ cls: 'bdn-cal-title is-clickable' });
-		this.titleEl.setAttr('aria-label', 'Jump to month');
-		this.registerDomEvent(this.titleEl, 'click', () => this.togglePicker());
+		// The title is a header-styled text label (see headerLabel) that doubles as a
+		// button opening the month/year picker.
+		this.titleEl = this.headerLabel(header, 'Jump to month', () => this.togglePicker());
 
 		const controls = header.createDiv({ cls: 'bdn-cal-controls' });
 
-		// Month navigation (default): ‹ today ›.
+		// Month navigation (default): ‹ Today ›.
 		this.monthControlsEl = controls.createDiv({ cls: 'bdn-cal-controls-group' });
 		this.iconButton(this.monthControlsEl, 'chevron-left', 'Previous month', () =>
 			this.shiftMonth(-1),
 		);
-		// Open today's note (scrolls the infinite view, which re-syncs our month).
-		this.iconButton(this.monthControlsEl, 'calendar-check', 'Go to today', () =>
+		// "Today" as a header-styled text label (opens today's note, which scrolls the
+		// infinite view and re-syncs our month).
+		this.headerLabel(this.monthControlsEl, 'Go to today', () =>
 			void this.plugin.openDate(moment()),
-		);
+		).setText('Today');
 		this.nextMonthBtn = this.iconButton(this.monthControlsEl, 'chevron-right', 'Next month', () =>
 			this.shiftMonth(1),
 		);
@@ -133,11 +133,10 @@ export class CalendarView extends ItemView {
 		this.iconButton(this.yearControlsEl, 'chevron-left', 'Previous year', () =>
 			this.shiftPickerYear(-1),
 		);
-		this.yearLabelEl = this.yearControlsEl.createDiv({
-			cls: 'bdn-cal-picker-year is-clickable',
-			attr: { 'aria-label': 'Choose year' },
-		});
-		this.registerDomEvent(this.yearLabelEl, 'click', (e) => this.openYearMenu(e));
+		// The year reads as a header-styled label too (matching the title/Today).
+		this.yearLabelEl = this.headerLabel(this.yearControlsEl, 'Choose year', (e) =>
+			this.openYearMenu(e),
+		);
 		this.nextYearBtn = this.iconButton(this.yearControlsEl, 'chevron-right', 'Next year', () =>
 			this.shiftPickerYear(1),
 		);
@@ -211,6 +210,27 @@ export class CalendarView extends ItemView {
 				this.registerDomEvent(cell, 'click', () => void this.plugin.openDate(date));
 			}
 		}
+	}
+
+	/**
+	 * Build a clickable text label styled like a backlinks pane section header
+	 * ("LINKED MENTIONS"): theme-driven size/weight/casing/color plus the native
+	 * hover background, inherited from `.backlink-pane > .tree-item-self` and its
+	 * `.tree-item-inner` child. The host is a display:contents shell, present only
+	 * to satisfy the `.backlink-pane >` parent. Returns the inner element, where
+	 * the caller sets (and later updates) the text.
+	 */
+	private headerLabel(
+		parent: HTMLElement,
+		ariaLabel: string,
+		onClick: (evt: MouseEvent) => void,
+	): HTMLElement {
+		const host = parent.createDiv({ cls: 'bdn-cal-headtext-host backlink-pane' });
+		// `is-clickable` gives it the pane header's native hover background.
+		const self = host.createDiv({ cls: 'bdn-cal-headtext tree-item-self is-clickable' });
+		self.setAttr('aria-label', ariaLabel);
+		this.registerDomEvent(self, 'click', onClick);
+		return self.createDiv({ cls: 'bdn-cal-headtext-inner tree-item-inner' });
 	}
 
 	private iconButton(
