@@ -279,11 +279,6 @@
 	--bdn-day-color: var(--text-normal);
 }
 
-/* Today: accent-colored number (no ring). */
-.bdn-cal-day.is-today {
-	--bdn-day-color: var(--interactive-accent);
-}
-
 /* Days outside the current month: keep the cell's space, hide the number. */
 .bdn-cal-day.is-adjacent {
 	color: transparent;
@@ -294,6 +289,34 @@
 .bdn-cal-day.is-active,
 .bdn-cal-day.is-active:hover {
 	background-color: var(--background-modifier-hover);
+}
+
+/* Today: on-accent (white) number over a small accent circle. The circle is a
+   pseudo-element inset from the cell edges (so it's smaller than the full cell),
+   sat behind the number via the cell's own stacking context. Placed after
+   .is-active so it wins when today is also the in-view day; the cell itself stays
+   unfilled (no grey hover/active rect competing with the circle). */
+.bdn-cal-day.is-today {
+	--bdn-day-color: var(--text-on-accent);
+	isolation: isolate;
+}
+
+.bdn-cal-day.is-today,
+.bdn-cal-day.is-today:hover {
+	background-color: transparent;
+}
+
+.bdn-cal-day.is-today::before {
+	content: '';
+	position: absolute;
+	inset: var(--size-2-2);
+	border-radius: 50%;
+	background-color: var(--interactive-accent);
+	z-index: -1;
+}
+
+.bdn-cal-day.is-today:hover::before {
+	background-color: var(--interactive-accent-hover);
 }
 
 /* ---- Month / year picker (opened from the title) ---- */
@@ -324,7 +347,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--size-2-3) 0;
+	padding: var(--size-4-3) 0;
 	border-radius: var(--radius-s);
 	font-size: var(--font-ui-small);
 	/* Faint when empty, matching a no-note day in the grid. */
@@ -343,11 +366,6 @@
 /* Months that contain notes read at full strength (like a day with a note). */
 .bdn-cal-picker-month.has-note {
 	color: var(--text-normal);
-}
-
-/* This year's current month: accent-colored label (matches the day grid's today). */
-.bdn-cal-picker-month.is-today {
-	color: var(--interactive-accent);
 }
 
 /* The month the day grid is currently showing. */

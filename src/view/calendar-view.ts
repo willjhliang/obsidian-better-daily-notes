@@ -336,7 +336,6 @@ export class CalendarView extends ItemView {
 			});
 			const isThisMonth = month.isSame(today, 'month');
 			if (month.isSame(this.displayedMonth, 'month')) cell.addClass('is-active');
-			if (isThisMonth) cell.addClass('is-today');
 			const hasNote = this.source.hasEntryInMonth(month);
 			if (hasNote) cell.addClass('has-note');
 
