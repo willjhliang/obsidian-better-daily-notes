@@ -103,7 +103,10 @@ export class DaySection {
 		}
 		if (gen !== this.generation) return; // a newer transition superseded us
 
-		this.bodyEl.setCssStyles({ minHeight: '' });
+		// Drop the placeholder height floor (the CSS 4em estimate): the live editor
+		// or rendered preview now dictates the body height, so a short note doesn't
+		// keep dead space below it before the divider.
+		this.bodyEl.setCssStyles({ minHeight: '0' });
 		this.bodyEl.empty();
 		if (mode === 'editor') this.mountEditor(content);
 		else this.mountPreview(content);

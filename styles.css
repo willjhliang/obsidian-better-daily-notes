@@ -274,15 +274,26 @@
 	color: var(--bdn-day-color);
 }
 
-/* Days with a note read at full strength; other-month days are blank. */
+/* Days with a note read in the tag text color — the muted, theme-defined color
+   used for interactive text elsewhere (e.g. tags in the properties panel), not
+   pure --text-normal. Other-month days are blank. */
 .bdn-cal-day.has-note {
-	--bdn-day-color: var(--text-normal);
+	--bdn-day-color: var(--tag-color);
 }
 
 /* Days outside the current month: keep the cell's space, hide the number. */
 .bdn-cal-day.is-adjacent {
 	color: transparent;
 	cursor: default;
+}
+
+/* Highlighted — hovered or the in-view day: the standard panel hover grey plus
+   the tag's hover text color (a darker shade), so it reads like any interactive
+   item when highlighted. The grey on hover comes from `clickable-icon`; today is
+   excluded so its accent circle isn't overpainted. */
+.bdn-cal-day.has-note:hover:not(.is-today),
+.bdn-cal-day.has-note.is-active:not(.is-today) {
+	--bdn-day-color: var(--tag-color-hover);
 }
 
 /* The day currently in view in the infinite scroll: same fill as button hover. */
@@ -363,9 +374,17 @@
 	background-color: var(--background-modifier-hover);
 }
 
-/* Months that contain notes read at full strength (like a day with a note). */
+/* Months that contain notes read in the tag text color (like a day with a note). */
 .bdn-cal-picker-month.has-note {
-	color: var(--text-normal);
+	color: var(--tag-color);
+}
+
+/* Highlighted — hovered or the shown month: panel hover grey (added below / by
+   the :hover rule above) plus the tag's darker hover text color, matching a day
+   cell and any interactive item. */
+.bdn-cal-picker-month.has-note.is-clickable:hover,
+.bdn-cal-picker-month.has-note.is-active {
+	color: var(--tag-color-hover);
 }
 
 /* The month the day grid is currently showing. */
