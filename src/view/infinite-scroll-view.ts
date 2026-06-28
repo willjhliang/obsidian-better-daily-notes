@@ -36,6 +36,9 @@ export class InfiniteScrollView extends ItemView implements DaySectionHost {
 	private scrollHandler: (() => void) | null = null;
 	private windowingScheduled = false;
 
+	/** Last bottom-spacer height we wrote, to skip redundant style writes. */
+	private bottomPad = -1;
+
 	/** Last day reported to the calendar, to suppress duplicate notifications. */
 	private lastActiveKey: string | null = null;
 	private readonly emitActiveDate: (date: Moment) => void;
@@ -136,6 +139,8 @@ export class InfiniteScrollView extends ItemView implements DaySectionHost {
 	private renderFromTop(targetCount = this.settings.loadBatch): void {
 		this.clearSections();
 		this.loadedCount = 0;
+		this.bottomPad = -1; // force the spacer to be recomputed for the new stack
+
 		if (this.source.total === 0) {
 			this.showEmpty();
 			return;
@@ -156,16 +161,46 @@ export class InfiniteScrollView extends ItemView implements DaySectionHost {
 		this.updateBottomSpacer();
 	}
 
-	/**
-	 * Trailing whitespace under the last (oldest) entry, mirroring a normal
-	 * note's "scroll past end" padding (~half the editor height). Only applied
-	 * once every note is loaded, so it never sits between us and the next batch.
-	 */
+	/** Trailing whitespace under the last (oldest) entry. Writes only on change. */
 	private updateBottomSpacer(): void {
 		if (!this.scrollEl || !this.stackEl) return;
-		const allLoaded = this.loadedCount >= this.source.total;
-		const pad = allLoaded ? Math.round(this.scrollEl.clientHeight * 0.5) : 0;
+		const pad = this.computeBottomPad();
+		if (pad === this.bottomPad) return;
+		this.bottomPad = pad;
 		this.stackEl.setCssStyles({ paddingBottom: `${pad}px` });
+	}
+
+	/**
+	 * How much blank space to leave under the oldest entry: exactly enough that
+	 * scrolling the oldest note's TOP up to the active line (where a jump lands it)
+	 * coincides with the scroll bottom. So after jumping to the oldest day it's the
+	 * active one and you can't scroll any farther down — no slack below it, and a
+	 * short last note is still reachable as active. The depth grows as the note
+	 * shrinks, so derive it from the last section's height. Zero until all notes
+	 * load, so it never sits between us and the next batch.
+	 *
+	 * The sentinel and the scroll container's own bottom padding also add to the
+	 * scrollable height below the stack, so subtract them too — otherwise you could
+	 * scroll those extra pixels past the point where the oldest day lands active.
+	 * The trailing +1 biases the spacer a hair large so the jump reaches the line
+	 * exactly (rather than clamping a sub-pixel short and activating the day above).
+	 *
+	 * That "reach active" depth shrinks as the note grows; for a long last note it
+	 * collapses to ~0, leaving no room to scroll past its end. So floor it at a
+	 * normal note's "scroll past end" padding (~half a viewport). A short note's
+	 * reach-active depth far exceeds that floor, so it stays exactly tight (jump =
+	 * scroll bottom); a long note falls back to the comfort floor instead.
+	 */
+	private computeBottomPad(): number {
+		if (this.loadedCount < this.source.total) return 0;
+		const viewH = this.scrollEl.clientHeight;
+		const last = this.sections[this.sections.length - 1];
+		const lastH = last ? last.el.offsetHeight : 0;
+		const sentinelH = this.sentinelEl.offsetHeight;
+		const padBottom = parseFloat(getComputedStyle(this.scrollEl).paddingBottom) || 0;
+		const reachActive = viewH - ACTIVE_DATE_OFFSET_PX - lastH - sentinelH - padBottom;
+		const comfort = viewH * 0.5;
+		return Math.round(Math.max(comfort, reachActive + 1));
 	}
 
 	onResize(): void {
@@ -259,6 +294,10 @@ export class InfiniteScrollView extends ItemView implements DaySectionHost {
 		}
 
 		this.reportActiveDate(view.top);
+
+		// The last section's height changes as it swaps placeholder/preview/editor;
+		// keep the bottom spacer in step so the oldest note stays reachable as active.
+		this.updateBottomSpacer();
 	}
 
 	/** Tell the calendar which day sits at the top of the viewport. */

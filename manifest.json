@@ -2,7 +2,7 @@
 	"id": "better-daily-notes",
 	"name": "Better Daily Notes",
 	"version": "1.0.0",
-	"minAppVersion": "1.7.0",
+	"minAppVersion": "1.7.2",
 	"description": "Daily notes with infinite scroll and calendar.",
 	"author": "William Liang",
 	"authorUrl": "https://willjhliang.github.io",
