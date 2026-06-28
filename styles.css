@@ -191,13 +191,25 @@
 }
 
 /* Header text labels (the "June 2026" title and the "Today" button) are styled
-   like a backlinks pane section header. The host generates no box
-   (display:contents); it exists only so the label is a direct child of
-   `.backlink-pane`, letting the theme's `.backlink-pane > .tree-item-self` rule
-   apply its section-header text styling (size, weight, casing, color,
-   letter-spacing) — under any theme, with nothing hardcoded. */
+   like a backlinks pane section header. The host carries `.backlink-pane` only
+   so the theme's `.backlink-pane > .tree-item-self` rule applies its
+   section-header text styling (size, weight, casing, color, letter-spacing) to
+   the label — under any theme, with nothing hardcoded. Its own box is
+   neutralized to a thin, shrink-wrapping flex wrapper that adds no spacing or
+   background, so the label lays out exactly as a direct flex child would.
+   (This replaces a box-erasing `contents` display value, which is only
+   partially supported on older Obsidian/Chromium builds; typography still
+   inherits to the child.) */
 .bdn-cal-header .bdn-cal-headtext-host {
-	display: contents;
+	display: flex;
+	flex: 0 1 auto;
+	width: auto;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: none;
+	background: none;
+	box-shadow: none;
 }
 
 /* Each label is a real `.tree-item-self` + `.tree-item-inner`, so it keeps the

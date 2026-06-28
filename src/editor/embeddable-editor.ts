@@ -1,14 +1,4 @@
-/*
- * This module deliberately reaches into undocumented Obsidian internals to
- * recover the live Markdown editor class. The unsafe-any lint rules are
- * disabled here only — every access is guarded at runtime with try/catch.
- */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import { App, TFile } from 'obsidian';
+import { App, MarkdownFileInfo, TFile } from 'obsidian';
 import { EditorView, placeholder } from '@codemirror/view';
 
 /**
@@ -19,9 +9,10 @@ import { EditorView, placeholder } from '@codemirror/view';
  * day in the infinite-scroll view edits exactly like a normal note.
  *
  * The editor class is not part of Obsidian's public API. We recover it at
- * runtime from the embed registry (see {@link resolveEditorBase}). Everything
- * here is defensive — if the internal shape changes, construction throws and
- * the caller falls back to a read-only rendered preview.
+ * runtime from the embed registry (see {@link resolveEditorBase}) and describe
+ * its shape with the minimal internal interfaces below. Everything here is
+ * defensive — if the internal shape changes, construction throws and the caller
+ * falls back to a read-only rendered preview.
  */
 
 export interface EmbeddableEditorOptions {
@@ -34,8 +25,51 @@ export interface EmbeddableEditorOptions {
 	onBlur?: (value: string) => void;
 }
 
+/** The owner object the base MarkdownEditor expects as its third constructor arg. */
+interface InternalEditorOwner {
+	app: App;
+	onMarkdownScroll(): void;
+	getMode(): 'source' | 'preview';
+	/** The base wires its live editor back onto these once constructed. */
+	editMode?: unknown;
+	editor?: unknown;
+}
+
+/** The members of the internal MarkdownEditor instance we read or override. */
+interface InternalMarkdownEditor {
+	app: App;
+	owner: InternalEditorOwner;
+	editor?: { cm?: EditorView } | null;
+	cm?: EditorView;
+	editorEl?: HTMLElement;
+	containerEl?: HTMLElement;
+	/** Component lifecycle flag the base sets while loaded. */
+	_loaded?: boolean;
+	set(value: string, clear: boolean): void;
+	get?(): string;
+	load(): void;
+	unload(): void;
+	destroy(): void;
+	onunload?(): void;
+	buildLocalExtensions?(): unknown[];
+}
+
+/** Constructor of the recovered base MarkdownEditor class. */
+type InternalEditorBaseCtor = new (
+	app: App,
+	container: HTMLElement,
+	owner: InternalEditorOwner,
+) => InternalMarkdownEditor;
+
+/** Constructor of our dynamic subclass (its third arg is our wrapper). */
+type EmbeddedEditorCtor = new (
+	app: App,
+	container: HTMLElement,
+	wrapper: EmbeddableMarkdownEditor,
+) => InternalMarkdownEditor;
+
 /** Cached dynamic subclass of the resolved internal MarkdownEditor. */
-let CachedEditorClass: (new (app: App, container: HTMLElement, owner: any) => any) | null = null;
+let CachedEditorClass: EmbeddedEditorCtor | null = null;
 /** Set once we know the internal API is unavailable, to avoid retrying. */
 let resolutionFailed = false;
 
@@ -43,7 +77,7 @@ let resolutionFailed = false;
  * Recover the internal MarkdownEditor constructor by briefly spinning up the
  * editor Obsidian uses for markdown embeds, then walking its prototype chain.
  */
-function resolveEditorBase(app: App): new (...args: any[]) => any {
+function resolveEditorBase(app: App): InternalEditorBaseCtor {
 	const createEmbed = app.embedRegistry?.embedByExtension?.md;
 	if (typeof createEmbed !== 'function') {
 		throw new Error('embedRegistry.embedByExtension.md is unavailable');
@@ -54,12 +88,17 @@ function resolveEditorBase(app: App): new (...args: any[]) => any {
 	widget.showEditor?.();
 	// editMode is an instance of the MarkdownEditor; its grandparent prototype is
 	// the base class we want to subclass.
-	const base = Object.getPrototypeOf(Object.getPrototypeOf(widget.editMode));
+	const editMode = widget.editMode;
+	if (!editMode) {
+		throw new Error('embed widget did not expose an editMode');
+	}
+	const proto = Object.getPrototypeOf(editMode) as object;
+	const base = Object.getPrototypeOf(proto) as { constructor: InternalEditorBaseCtor };
 	widget.unload?.();
-	return base.constructor as new (...args: any[]) => any;
+	return base.constructor;
 }
 
-function buildEditorClass(app: App): new (app: App, container: HTMLElement, owner: any) => any {
+function buildEditorClass(app: App): EmbeddedEditorCtor {
 	if (CachedEditorClass) return CachedEditorClass;
 	const Base = resolveEditorBase(app);
 
@@ -94,7 +133,7 @@ function buildEditorClass(app: App): new (app: App, container: HTMLElement, owne
 			const contentDOM: HTMLElement | undefined = this.editor?.cm?.contentDOM;
 			if (contentDOM) {
 				contentDOM.addEventListener('focusin', () => {
-					this.app.workspace.activeEditor = this.owner;
+					this.app.workspace.activeEditor = this.owner as unknown as MarkdownFileInfo;
 				});
 				contentDOM.addEventListener('blur', () => {
 					if (this._loaded) this.bdn.handleBlur();
@@ -131,20 +170,20 @@ function buildEditorClass(app: App): new (app: App, container: HTMLElement, owne
 	return CachedEditorClass;
 }
 
-function getCM(instance: any): EditorView | null {
-	return (instance?.editor?.cm ?? instance?.cm ?? null) as EditorView | null;
+function getCM(instance: InternalMarkdownEditor | null): EditorView | null {
+	return instance?.editor?.cm ?? instance?.cm ?? null;
 }
 
 export class EmbeddableMarkdownEditor {
 	readonly options: EmbeddableEditorOptions;
-	private instance: any = null;
+	private instance: InternalMarkdownEditor | null = null;
 
 	constructor(app: App, container: HTMLElement, _file: TFile | null, options: EmbeddableEditorOptions) {
 		this.options = options;
 		const Clazz = buildEditorClass(app);
 		this.instance = new Clazz(app, container, this);
 		// Load the editor component so its live-preview view plugins activate.
-		this.instance.load?.();
+		this.instance.load();
 	}
 
 	/** Whether the internal editor API is available in this Obsidian build. */

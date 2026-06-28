@@ -216,9 +216,9 @@ export class CalendarView extends ItemView {
 	 * Build a clickable text label styled like a backlinks pane section header
 	 * ("LINKED MENTIONS"): theme-driven size/weight/casing/color plus the native
 	 * hover background, inherited from `.backlink-pane > .tree-item-self` and its
-	 * `.tree-item-inner` child. The host is a display:contents shell, present only
-	 * to satisfy the `.backlink-pane >` parent. Returns the inner element, where
-	 * the caller sets (and later updates) the text.
+	 * `.tree-item-inner` child. The host is a `.backlink-pane` shell whose own box
+	 * is neutralized in CSS, present only to satisfy the `.backlink-pane >` parent.
+	 * Returns the inner element, where the caller sets (and later updates) the text.
 	 */
 	private headerLabel(
 		parent: HTMLElement,

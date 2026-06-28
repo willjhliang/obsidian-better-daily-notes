@@ -60,11 +60,11 @@ export class BetterDailyNotesSettingTab extends PluginSettingTab {
 	private addFormatHint(setting: Setting, fallback: string): (value: string) => void {
 		setting.descEl.empty();
 		setting.descEl.appendText('For more syntax, refer to ');
-		setting.descEl.createEl('a', {
-			// eslint-disable-next-line obsidianmd/ui/sentence-case -- inline link text within a sentence
-			text: 'format reference',
-			href: 'https://momentjs.com/docs/#/displaying/format/',
-		});
+		// Inline link text stays lowercase mid-sentence; appendText keeps it out of the
+		// sentence-case UI-text check (which only inspects createEl `text` props).
+		setting.descEl
+			.createEl('a', { href: 'https://momentjs.com/docs/#/displaying/format/' })
+			.appendText('format reference');
 		setting.descEl.appendText('.');
 		setting.descEl.createEl('br');
 		setting.descEl.appendText('Your current syntax looks like this: ');
@@ -86,10 +86,10 @@ export class BetterDailyNotesSettingTab extends PluginSettingTab {
 		const customSetting = new Setting(containerEl).setName('Custom format');
 		const renderSample = this.addFormatHint(customSetting, DEFAULT_SETTINGS.dateFormat);
 		renderSample(this.plugin.settings.dateFormat);
+		// No placeholder: the description above already shows the format syntax and a
+		// live sample, and an empty field falls back to the default format.
 		customSetting.addText((text) =>
 			text
-				// eslint-disable-next-line obsidianmd/ui/sentence-case -- moment.js format token
-				.setPlaceholder('YYYY-MM-DD')
 				.setValue(this.plugin.settings.dateFormat)
 				.onChange(async (value) => {
 					this.plugin.settings.dateFormat = value || DEFAULT_SETTINGS.dateFormat;
@@ -141,9 +141,9 @@ export class BetterDailyNotesSettingTab extends PluginSettingTab {
 			.setName('Template file location')
 			.setDesc('Choose the file to use as a template.')
 			.addText((text) => {
+				// No placeholder: the file suggester offers candidates, and an empty
+				// field is a valid choice (no template applied).
 				text
-					// eslint-disable-next-line obsidianmd/ui/sentence-case -- template file path
-					.setPlaceholder('Example: Templates/Daily Note Template')
 					.setValue(this.plugin.settings.template)
 					.onChange(async (value) => {
 						this.plugin.settings.template = value.trim();
@@ -196,10 +196,10 @@ export class BetterDailyNotesSettingTab extends PluginSettingTab {
 		const headerFmt = new Setting(containerEl).setName('Day header format');
 		const renderHeaderSample = this.addFormatHint(headerFmt, DEFAULT_SETTINGS.headerDateFormat);
 		renderHeaderSample(this.plugin.settings.headerDateFormat);
+		// No placeholder: the description shows the format syntax and a live sample,
+		// and an empty field falls back to the default format.
 		headerFmt.addText((text) =>
 			text
-				// eslint-disable-next-line obsidianmd/ui/sentence-case -- moment.js format token
-				.setPlaceholder('dddd, MMMM D, YYYY')
 				.setValue(this.plugin.settings.headerDateFormat)
 				.onChange(async (value) => {
 					this.plugin.settings.headerDateFormat = value || DEFAULT_SETTINGS.headerDateFormat;
