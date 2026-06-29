@@ -2,7 +2,7 @@
 
 Better Daily Notes is a simple plugin that creates daily notes and organizes them in a single infinite-scrolling page. It also includes a calendar to easily jump between days.
 
-<img width="1280" height="803" alt="better_daily_notes" src="https://github.com/user-attachments/assets/f5bf67e8-c7a4-465b-9df1-fadc72177500" />
+<img width="1147" height="720" alt="better_daily_notes" src="https://github.com/user-attachments/assets/681adb88-6d10-4bb7-884b-e3f0c102f808" />
 
 ## Usage
 
