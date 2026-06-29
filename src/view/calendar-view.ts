@@ -19,6 +19,10 @@ export class CalendarView extends ItemView {
 
 	private displayedMonth: Moment;
 	private activeDate: Moment | null = null;
+	/** Whether the daily-notes view is the focused main-area tab. The in-view
+	 *  (grey) day highlight tracks that view's scroll position, so it's hidden
+	 *  while the user is looking at something else. */
+	private activeVisible = true;
 
 	/** Persistent shell elements, built once so the header never re-renders. */
 	private titleEl!: HTMLElement;
@@ -92,8 +96,15 @@ export class CalendarView extends ItemView {
 		this.updateActiveHighlight();
 	}
 
+	/** Show or hide the in-view day highlight as the focused tab changes. */
+	setActiveVisible(visible: boolean): void {
+		if (this.activeVisible === visible) return;
+		this.activeVisible = visible;
+		this.updateActiveHighlight();
+	}
+
 	private updateActiveHighlight(): void {
-		const key = this.activeDate?.format('YYYY-MM-DD') ?? null;
+		const key = this.activeVisible ? (this.activeDate?.format('YYYY-MM-DD') ?? null) : null;
 		this.gridEl.querySelectorAll('.bdn-cal-day').forEach((el) => {
 			el.toggleClass('is-active', key != null && el.getAttr('data-day') === key);
 		});
@@ -197,7 +208,8 @@ export class CalendarView extends ItemView {
 			}
 			const isToday = date.isSame(today, 'day');
 			if (isToday) cell.addClass('is-today');
-			if (this.activeDate && date.isSame(this.activeDate, 'day')) cell.addClass('is-active');
+			if (this.activeVisible && this.activeDate && date.isSame(this.activeDate, 'day'))
+				cell.addClass('is-active');
 			const hasNote = this.source.entryOn(date) != null;
 			if (hasNote) cell.addClass('has-note');
 

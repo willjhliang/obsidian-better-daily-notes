@@ -32,6 +32,9 @@ export class InfiniteScrollView extends ItemView implements DaySectionHost {
 	private sections: DaySection[] = [];
 	private loadedCount = 0;
 
+	/** Keys of days the user has folded, preserved across stack rebuilds. */
+	private collapsedKeys = new Set<string>();
+
 	private sentinelObserver: IntersectionObserver | null = null;
 	private scrollHandler: (() => void) | null = null;
 	private windowingScheduled = false;
@@ -87,6 +90,19 @@ export class InfiniteScrollView extends ItemView implements DaySectionHost {
 
 	openFileInTab(file: TFile): void {
 		void this.app.workspace.getLeaf('tab').openFile(file);
+	}
+
+	isDayCollapsed(key: string): boolean {
+		return this.collapsedKeys.has(key);
+	}
+
+	setDayCollapsed(key: string, collapsed: boolean): void {
+		if (collapsed) this.collapsedKeys.add(key);
+		else this.collapsedKeys.delete(key);
+	}
+
+	requestWindowing(): void {
+		this.scheduleWindowing();
 	}
 
 	// --- construction ---

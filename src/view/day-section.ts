@@ -1,4 +1,4 @@
-import { App, Component, MarkdownRenderer, TFile } from 'obsidian';
+import { App, Component, MarkdownRenderer, TFile, setIcon } from 'obsidian';
 import { EmbeddableMarkdownEditor } from '../editor/embeddable-editor';
 import { SAVE_DEBOUNCE_MS } from '../constants';
 import type { BetterDailyNotesSettings } from '../settings';
@@ -11,6 +11,11 @@ export interface DaySectionHost {
 	app: App;
 	settings: BetterDailyNotesSettings;
 	openFileInTab(file: TFile): void;
+	/** Persisted collapse state, so folding survives stack rebuilds. */
+	isDayCollapsed(key: string): boolean;
+	setDayCollapsed(key: string, collapsed: boolean): void;
+	/** Re-evaluate windowing/heights after a section's size changes. */
+	requestWindowing(): void;
 }
 
 /**
@@ -27,11 +32,13 @@ export class DaySection {
 
 	private host: DaySectionHost;
 	private headerEl: HTMLElement;
+	private collapseEl!: HTMLElement;
 	private bodyEl: HTMLElement;
 	private file: TFile;
 
 	private editor: EmbeddableMarkdownEditor | null = null;
 	private preview: Component | null = null;
+	private collapsed = false;
 	private dirty = false;
 	private saveTimer: number | null = null;
 	/** Bumped on every mode change to cancel stale async content reads. */
@@ -47,6 +54,8 @@ export class DaySection {
 		// A real <hr> so the inter-day divider matches a markdown "---" exactly,
 		// inheriting the theme's hr styling. Hidden under the last day via CSS.
 		this.el.createEl('hr', { cls: 'bdn-day-divider' });
+		this.collapsed = host.isDayCollapsed(entry.key);
+		this.el.toggleClass('is-collapsed', this.collapsed);
 		this.renderHeader();
 		this.applySettings();
 	}
@@ -65,6 +74,23 @@ export class DaySection {
 
 	private renderHeader(): void {
 		this.headerEl.empty();
+		// Reuse Obsidian's own heading collapse-indicator classes (and icon) so the
+		// arrow's size, color, rotation, transition and collapsed-state styling all
+		// come from the app/theme — identical to a real note heading's fold arrow.
+		// Only its gutter placement and hover-reveal are styled by us (see CSS).
+		const toggle = this.headerEl.createSpan({
+			cls: 'heading-collapse-indicator collapse-indicator collapse-icon bdn-collapse-icon',
+			attr: { 'aria-label': 'Toggle collapse' },
+		});
+		setIcon(toggle, 'right-triangle');
+		toggle.toggleClass('is-collapsed', this.collapsed);
+		toggle.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			this.setCollapsed(!this.collapsed);
+		});
+		this.collapseEl = toggle;
+
 		const label = this.entry.date.format(this.host.settings.headerDateFormat);
 		const link = this.headerEl.createEl('a', { cls: 'bdn-day-title', text: label });
 		link.addEventListener('click', (e) => {
@@ -73,11 +99,29 @@ export class DaySection {
 		});
 	}
 
+	/** Fold or unfold the day's body, persisting the choice via the host. */
+	setCollapsed(collapsed: boolean): void {
+		if (this.collapsed === collapsed) return;
+		this.collapsed = collapsed;
+		// `is-collapsed` on the section drives body-hide + the collapsed indicator
+		// color/visibility (native `.is-collapsed .collapse-indicator` rules); on the
+		// icon itself it drives the arrow rotation (`.collapse-icon.is-collapsed`).
+		this.el.toggleClass('is-collapsed', collapsed);
+		this.collapseEl.toggleClass('is-collapsed', collapsed);
+		this.host.setDayCollapsed(this.entry.key, collapsed);
+		// Heights changed: refresh windowing so a re-expanded body gets content
+		// and the bottom spacer / active-day tracking stay in step.
+		this.host.requestWindowing();
+	}
+
 	applySettings(): void {
 		this.renderHeader();
 	}
 
 	async setMode(mode: SectionMode): Promise<void> {
+		// A collapsed body is hidden, so don't spend an editor/preview on it; keep
+		// it as a placeholder until the user expands (which re-runs windowing).
+		if (this.collapsed) mode = 'placeholder';
 		if (mode === this.mode) return;
 
 		if (this.mode === 'editor') {

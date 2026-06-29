@@ -107,6 +107,37 @@
 .bdn-day-header {
 	/* 4px above, 16px below — matches a normal note's inline-title bottom gap. */
 	padding: var(--size-4-1) 0 var(--size-4-4);
+	position: relative;
+}
+
+/* The fold arrow reuses Obsidian's native collapse-indicator classes, so its
+   size, color, stroke, rotation, transition and collapsed-state styling all come
+   from the app/theme — exactly like a real heading's fold arrow. We only place
+   it in the header's left gutter and reveal it on header hover. */
+.bdn-collapse-icon {
+	position: absolute;
+	inset-inline-start: 0;
+	/* Mirror the gutter offset Obsidian gives heading indicators
+	   (.markdown-preview-view .heading-collapse-indicator); that rule is scoped to
+	   the reading view, so it can't reach this custom view. */
+	margin-inline-start: -22px;
+	padding: 0 6px;
+	/* Inherit the h1 line metrics so .collapse-icon's flex centering lands the
+	   arrow on the header's first line (the title is sized from the same vars). */
+	font-size: var(--h1-size);
+	line-height: var(--h1-line-height);
+	cursor: var(--cursor);
+}
+
+/* Reveal on header hover, matching native `h1:hover .collapse-indicator`. The
+   collapsed/visible-when-folded state is handled by Obsidian's own
+   `.is-collapsed .collapse-indicator` rule (the section carries `is-collapsed`). */
+.bdn-day-header:hover .bdn-collapse-icon {
+	opacity: 1;
+}
+
+.bdn-day.is-collapsed .bdn-day-body {
+	display: none;
 }
 
 /* Style the date like a top-level "# heading". */

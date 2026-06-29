@@ -41,6 +41,16 @@ export default class BetterDailyNotesPlugin extends Plugin {
 
 		this.addSettingTab(new BetterDailyNotesSettingTab(this.app, this));
 
+		// Show the calendar's in-view (grey) day highlight only while the daily
+		// notes view is the focused main-area tab. Sidebar focus changes (e.g.
+		// clicking the calendar itself) are ignored so they don't toggle it.
+		this.registerEvent(
+			this.app.workspace.on('active-leaf-change', (leaf) => {
+				if (!leaf || leaf.getRoot() !== this.app.workspace.rootSplit) return;
+				this.setCalendarActiveVisible(leaf.view instanceof InfiniteScrollView);
+			}),
+		);
+
 		// Auto-open the calendar in the right sidebar once the workspace is ready,
 		// unless the user has turned it off.
 		this.app.workspace.onLayoutReady(() => {
@@ -104,6 +114,14 @@ export default class BetterDailyNotesPlugin extends Plugin {
 		for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_BDN_CALENDAR)) {
 			const view = leaf.view;
 			if (view instanceof CalendarView) view.setActiveDate(date);
+		}
+	}
+
+	/** Toggle the in-view day highlight in any open calendar(s). */
+	setCalendarActiveVisible(visible: boolean): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_BDN_CALENDAR)) {
+			const view = leaf.view;
+			if (view instanceof CalendarView) view.setActiveVisible(visible);
 		}
 	}
 
